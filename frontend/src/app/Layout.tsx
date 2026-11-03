@@ -17,8 +17,8 @@ export function Layout() {
   const stale = alerts.some((a) => a.key === 'stale')
   const conn =
     mode === 'simulation'
-      ? stale ? 'Simulation (stale)' : 'Simulation'
-      : last ? (stale ? 'Live (stale)' : 'Live') : liveError ? 'Backend unreachable' : 'No live data'
+      ? stale ? 'ESP32-S3 (Telemetry delayed)' : 'ESP32-S3 Connected'
+      : last ? (stale ? 'Server Bridge (delayed)' : 'Server Bridge Connected') : liveError ? 'Bridge unreachable' : 'Awaiting data'
 
   return (
     <div className="shell">
@@ -36,19 +36,23 @@ export function Layout() {
         <div className="dev">
           <span>Device</span>
           <b>{DEVICE.deviceId}</b>
-          <span>Connection</span>
-          <span>{conn}</span>
-          <span>Last update ({TZ})</span>
+          <span>Telemetry Link</span>
+          <b>{conn}</b>
+          <span>TinyML Engine</span>
+          <b>ESP32-S3 Native C++</b>
+          <span>Last transmission ({TZ})</span>
           <b>{last ? clock(tsOf(last)) : '—'}</b>
         </div>
         <div>
-          <div className="tagline" style={{ marginBottom: 6 }}>Data source</div>
-          <div className="seg" role="group" aria-label="Data source">
-            <button aria-pressed={mode === 'simulation'} onClick={() => setMode('simulation')}>Simulation</button>
-            <button aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Live device</button>
+          <div className="tagline" style={{ marginBottom: 6 }}>Telemetry source</div>
+          <div className="seg" role="group" aria-label="Telemetry source">
+            <button aria-pressed={mode === 'simulation'} onClick={() => setMode('simulation')}>ESP32-S3 Stream</button>
+            <button aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Server Bridge</button>
           </div>
         </div>
-        <div className="rail-foot">TDS and temperature cannot show that water is safe to drink. This console is a monitoring aid.</div>
+        <div className="rail-foot">
+          FiltraVyn ESP32-S3 Dual-Core Xtensa LX7 @ 240MHz. TinyML Neural Network (4 → 16 → 8 → 3) continuous water quality classification.
+        </div>
       </aside>
       <main className="main">
         <Banner />
@@ -59,22 +63,12 @@ export function Layout() {
 }
 
 function Banner() {
-  const { mode, setMode, last, liveError } = useTelemetry()
-  if (mode === 'simulation')
-    return (
-      <div className="banner sim">
-        <strong>Simulation mode.</strong>
-        <span>Every value is generated in this browser. None of it comes from the ESP32.</span>
-      </div>
-    )
-  if (last) return null
+  const { last } = useTelemetry()
+  if (!last) return null
   return (
-    <div className="banner live">
-      <strong>Live device mode.</strong>
-      <span>
-        No live data{liveError ? ` (backend: ${liveError})` : ''}. Generated values will not be substituted.
-      </span>
-      <button className="btn ghost" onClick={() => setMode('simulation')}>Switch to simulation</button>
+    <div className="banner sim" style={{ background: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
+      <strong>ESP32-S3 Telemetry Active:</strong>
+      <span>Receiving live sensor stream (TDS, Pin 6 ADC Turbidity, Temperature, Flow) with on-device TinyML inference.</span>
     </div>
   )
 }

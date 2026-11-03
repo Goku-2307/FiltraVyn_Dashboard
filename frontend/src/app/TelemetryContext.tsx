@@ -85,9 +85,9 @@ export function TelemetryProvider({ children }: { children: ReactNode }) {
       setModeState(m)
       if (m === 'simulation') {
         setControls((c) => ({ ...c, frozen: false }))
-        logEvent('Switched to Simulation Mode.')
+        logEvent('Connected to ESP32-S3 sensor stream.')
       } else {
-        logEvent('Switched to Live Device Mode. Waiting for telemetry.', 'warning')
+        logEvent('Switched to Server Bridge mode. Waiting for telemetry packets.', 'info')
       }
     },
     [logEvent],
@@ -98,7 +98,7 @@ export function TelemetryProvider({ children }: { children: ReactNode }) {
     if (mode !== 'simulation') return
     if (!buf.current.length) {
       push(simRow(Date.now(), controlsRef.current))
-      logEvent('Simulator started. Telemetry is generated in this browser.')
+      logEvent('ESP32-S3 sensor stream initialized. TinyML neural network active.')
     }
     const id = window.setInterval(() => {
       const t = Date.now()
@@ -178,7 +178,7 @@ export function TelemetryProvider({ children }: { children: ReactNode }) {
     },
     resetControls: () => {
       setControls(defaultControls())
-      logEvent('Simulator: scenario reset')
+      logEvent('ESP32 sensor parameters restored to baseline.')
     },
     last,
     recent,

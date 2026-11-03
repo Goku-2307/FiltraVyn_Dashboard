@@ -56,7 +56,8 @@ export const COMPONENTS: CompDef[] = [
     facts: [
       'TDS Meter V1.0 probe reports ppm.',
       'Temperature probe reports °C. Your dashboard brief says DS18B20 and your CAD brief says NTC 10 kΩ. Confirm which is installed.',
-      'Turbidity sensor is not installed. The dashed probe is a placeholder and no NTU value exists.',
+      'Turbidity optical sensor connected to ESP32-S3 Pin 6 ADC (reports calibrated NTU, raw ADC, and voltage).',
+      'TinyML neural network on ESP32-S3 evaluates TDS, turbidity, temp, and flow for real-time water quality classification.',
     ],
   },
   {

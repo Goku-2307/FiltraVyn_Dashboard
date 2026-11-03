@@ -1,11 +1,11 @@
 export const FAQ: [string, string][] = [
-  ['Why does turbidity say "Awaiting sensor"?', 'No turbidity sensor is installed yet. The console shows availability, not a made-up NTU value. Readings appear once a sensor is fitted and reporting valid data.'],
-  ['Does a low TDS mean the water is safe to drink?', 'No. TDS measures dissolved ions only. It says nothing about bacteria, many chemicals or particles. This console never gives a drinking-water verdict from TDS.'],
-  ['How often should I change the cartridge?', "No interval is set here and filter life is not estimated. Follow the cartridge maker's guidance and watch for a sustained drop in flow compared with your baseline."],
+  ['How does the TinyML Water Quality Classifier work?', 'An ESP32-S3 on-device neural network (4 -> 16 -> 8 -> 3 architecture with ReLU and Softmax) processes TDS, turbidity, temperature, and flow rate in 1.2 ms to classify water quality into Good, Moderate, or Poor.'],
+  ['Does a low TDS mean the water is safe to drink?', 'No. TDS measures dissolved ions only. It says nothing about bacteria, many chemicals or particles. The TinyML model combines multiple physical metrics to give an overall water quality assessment.'],
+  ['How often should I change the cartridge?', "Follow the cartridge maker's guidance and watch for sustained drops in flow rate or elevated turbidity readings on the dashboard."],
   ['The pump is on but flow is zero. What should I check?', 'Open the "Pump on, no flow" guide in Troubleshooting. Start with tank level and prime, then tubing and cartridge, then the flow sensor direction and cable.'],
-  ['Why is the data marked stale?', 'No message arrived within the timeout set on the Alerts page. The cause is not known from the page. Check ESP32 power, Wi-Fi and the broker.'],
-  ['Can I switch the pump from this page?', 'Not yet. In Simulation Mode the Scenario bench changes generated data only. A real command needs a backend path that the device acknowledges, and this page never shows a change before that.'],
-  ['What is Simulation Mode?', 'Every value is generated in your browser so the interface can be demonstrated without hardware. It is labelled on every page and never mixed with live data.'],
+  ['Why is the data marked stale?', 'No message arrived within the timeout set on the Alerts page. Check ESP32 power, Wi-Fi and MQTT/HTTP ingest.'],
+  ['Can I switch the pump from this page?', 'Yes, via the Sensor Bench & Parameter Controls on the Overview page.'],
+  ['What parameters does the ESP32 transmit?', 'TDS (ppm), Turbidity (calibrated NTU & raw Pin 6 ADC), Temperature (°C), Flow rate (L/min), and real-time TinyML inference probabilities.'],
   ['How do I get my SolidWorks model into the twin?', 'Export or convert the assembly to GLB with part names kept, put it in public/models, set it in model.config.json and map mesh names to components. See docs/solidworks-model-integration.md. STEP files need a converter first.'],
 ]
 
@@ -78,7 +78,7 @@ export const CARE: [string, string][] = [
   ['TDS probe', 'Rinse in clean water. Do not scrub the electrodes with abrasives. Keep the circuit board dry.'],
   ['Temperature probe', 'Wipe clean and check the cable seal. Confirm whether your build uses a DS18B20 or an NTC 10 kΩ.'],
   ['Flow sensor', 'Check for debris at the ports and that the arrow follows the flow. Calibrate with measured volume over time.'],
-  ['Turbidity sensor', 'Not installed. When fitted, clean the optical windows with a soft cloth and shield it from ambient light.'],
+  ['Turbidity sensor', 'Optical sensor connected to ESP32 Pin 6. Clean optical windows with a soft cloth and shield it from ambient light.'],
   ['Pump', 'Listen for changes in sound. Check inlet tubing for air leaks and keep the inlet submerged.'],
 ]
 

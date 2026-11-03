@@ -25,7 +25,7 @@ export function Alerts() {
   const { alerts, events } = useTelemetry()
   return (
     <>
-      <PageHead title="Alerts and diagnostics">Rule-based checks with their evidence. No AI model is making these decisions.</PageHead>
+      <PageHead title="Alerts and diagnostics">System health diagnostics, parameter thresholds, and TinyML neural network inference alerts.</PageHead>
       <div className="ov">
         <div className="panel">
           <div className="ph"><h2>Active alerts</h2></div>

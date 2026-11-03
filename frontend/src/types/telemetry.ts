@@ -1,5 +1,4 @@
-// Single source of truth for telemetry field names and units.
-// Frontend, backend (backend/app/models/telemetry.py), API and CSV export all use these names.
+import type { TinyMLPrediction } from '../services/tinyML'
 
 export type Mode = 'simulation' | 'live'
 export type SensorStatus = 'valid' | 'disconnected' | 'out_of_range' | 'not_installed' | 'unknown'
@@ -23,11 +22,17 @@ export interface Telemetry {
   temperature_c: number | null
   /** L/min */
   flow_lpm: number | null
-  /** NTU. Always null until a turbidity sensor is installed */
+  /** NTU */
   turbidity_ntu: number | null
+  /** ESP32-S3 Physical ADC (Pin 6) */
+  turbidity_raw?: number | null
+  /** ESP32-S3 Physical Sensor Voltage in Volts */
+  turbidity_voltage?: number | null
   pump_commanded: boolean
   pump_state: PumpState
   sensor_status: SensorStatuses
+  /** Native TinyML classification output from ESP32-S3 neural network */
+  tinyml?: TinyMLPrediction
 }
 
 export type Severity = 'info' | 'warning' | 'critical'

@@ -10,6 +10,7 @@ export interface Thresholds {
   flowMinLpm: number
   /** TDS above this prompts a review. It is not a drinking-water judgement (ppm). */
   tdsWarnHigh: number
+  turbidityWarnHigh: number
   tempMin: number
   tempMax: number
 }
@@ -19,14 +20,16 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
   startupDelayS: 10,
   flowMinLpm: 0.2,
   tdsWarnHigh: 500,
+  turbidityWarnHigh: 5.0,
   tempMin: 5,
   tempMax: 40,
 }
 
 export const DEVICE = {
   deviceId: 'filtravyn-001',
-  /** Plausible ranges used to reject impossible readings. Verify against your sensors. */
+  /** Plausible ranges used to reject impossible readings. */
   tdsRange: [0, 1000] as const,
+  turbidityRange: [0, 20] as const,
   temperatureRange: [-10, 85] as const,
   flowRange: [0, 6] as const,
   /** Pulses per litre for the flow sensor. null until calibrated. */

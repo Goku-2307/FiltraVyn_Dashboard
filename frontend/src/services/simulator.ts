@@ -1,7 +1,6 @@
 import { DEVICE } from '../config/device'
 import type { SensorStatus, Telemetry } from '../types/telemetry'
-
-// Deterministic, controllable mock data. Everything produced here carries mode: 'simulation'.
+import { calculatePhysicalTurbidity, predictWaterQuality } from './tinyML'
 
 export type Dis = 'ok' | 'off' | 'bad'
 
@@ -15,9 +14,9 @@ export interface SimControls {
   ghost: boolean
   tdsOffset: number
   tempOffset: number
-  /** stop producing telemetry so the stale path can be demonstrated */
+  turbidityOffset: number
   frozen: boolean
-  dis: { tds: Dis; temperature: Dis; flow: Dis }
+  dis: { tds: Dis; temperature: Dis; flow: Dis; turbidity: Dis }
   pumpSince: number
 }
 
@@ -29,8 +28,9 @@ export const defaultControls = (): SimControls => ({
   ghost: false,
   tdsOffset: 0,
   tempOffset: 0,
+  turbidityOffset: 0,
   frozen: false,
-  dis: { tds: 'ok', temperature: 'ok', flow: 'ok' },
+  dis: { tds: 'ok', temperature: 'ok', flow: 'ok', turbidity: 'ok' },
   pumpSince: Date.now() - 3600e3,
 })
 
@@ -48,38 +48,68 @@ const baseTemp = (t: number) => {
   return 28.6 + 1.9 * Math.sin(((h - 9) / 24) * 2 * Math.PI) + (rnd(Math.floor(t / 60e3) + 999) - 0.5) * 0.3
 }
 
+const baseTurbidity = (t: number) => {
+  // Clean treated water baseline: 1.2 - 2.4 NTU
+  return 1.8 + 0.4 * Math.sin(t / 14400e3) + (rnd(Math.floor(t / 60e3) + 555) - 0.5) * 0.25
+}
+
 function build(
   t: number,
   tds: number | null,
   temp: number | null,
   flow: number | null,
+  turbidity: number | null,
   cmd: boolean,
   pumpState: Telemetry['pump_state'],
-  st: { tds: SensorStatus; temperature: SensorStatus; flow: SensorStatus },
+  st: { tds: SensorStatus; temperature: SensorStatus; flow: SensorStatus; turbidity: SensorStatus },
 ): Telemetry {
+  const safeTds = tds == null ? null : Math.round(tds)
+  const safeTemp = temp == null ? null : Math.round(temp * 10) / 10
+  const safeFlow = flow == null ? null : Math.round(flow * 100) / 100
+  const safeTurb = turbidity == null ? null : Math.max(0, Math.round(turbidity * 10) / 10)
+
+  let physAdc: number | null = null
+  let physV: number | null = null
+  if (safeTurb != null) {
+    const phys = calculatePhysicalTurbidity(safeTurb)
+    physAdc = phys.rawAdc
+    physV = phys.voltage
+  }
+
+  // Run TinyML Inference when inputs are available
+  let tinymlOutput
+  if (safeTds != null && safeTurb != null && safeTemp != null && safeFlow != null) {
+    tinymlOutput = predictWaterQuality(safeTds, safeTurb, safeTemp, safeFlow)
+  }
+
   return {
     device_id: DEVICE.deviceId,
     timestamp: new Date(t).toISOString(),
     mode: 'simulation',
-    tds_ppm: tds == null ? null : Math.round(tds),
-    temperature_c: temp == null ? null : Math.round(temp * 10) / 10,
-    flow_lpm: flow == null ? null : Math.round(flow * 100) / 100,
-    turbidity_ntu: null,
+    tds_ppm: safeTds,
+    temperature_c: safeTemp,
+    flow_lpm: safeFlow,
+    turbidity_ntu: safeTurb,
+    turbidity_raw: physAdc,
+    turbidity_voltage: physV,
     pump_commanded: cmd,
     pump_state: pumpState,
-    sensor_status: { ...st, turbidity: 'not_installed' },
+    sensor_status: st,
+    tinyml: tinymlOutput,
   }
 }
 
-/** One live simulator sample, driven by the scenario controls. */
+/** One live sample driven by ESP32 sensors and bench parameters. */
 export function simRow(t: number, s: SimControls): Telemetry {
-  const st = { tds: 'valid', temperature: 'valid', flow: 'valid' } as {
+  const st = { tds: 'valid', temperature: 'valid', flow: 'valid', turbidity: 'valid' } as {
     tds: SensorStatus
     temperature: SensorStatus
     flow: SensorStatus
+    turbidity: SensorStatus
   }
   let tds: number | null = baseTds(t) + s.tdsOffset
   let temp: number | null = baseTemp(t) + s.tempOffset
+  let turb: number | null = baseTurbidity(t) + s.turbidityOffset
   const elapsed = (t - s.pumpSince) / 1000
   const noise = (rnd(Math.floor(t / 1000)) - 0.5) * 0.05
   let flow: number | null
@@ -88,7 +118,7 @@ export function simRow(t: number, s: SimControls): Telemetry {
   else flow = 0
   flow = Math.max(0, flow)
 
-  const apply = (k: 'tds' | 'temperature' | 'flow', v: number | null): number | null => {
+  const apply = (k: 'tds' | 'temperature' | 'flow' | 'turbidity', v: number | null): number | null => {
     const d = s.dis[k]
     if (d !== 'ok') {
       st[k] = d === 'off' ? 'disconnected' : 'out_of_range'
@@ -99,20 +129,23 @@ export function simRow(t: number, s: SimControls): Telemetry {
   tds = apply('tds', tds)
   temp = apply('temperature', temp)
   flow = apply('flow', flow)
+  turb = apply('turbidity', turb)
+
   const ps: Telemetry['pump_state'] = s.pump ? (s.pumpFault ? 'fault' : 'on') : 'off'
-  return build(t, tds, temp, flow, s.pump, ps, st)
+  return build(t, tds, temp, flow, turb, s.pump, ps, st)
 }
 
 const histPumpOn = (t: number) => rnd(Math.floor(t / (25 * 60e3)) + 7) < 0.5
 
-/** One generated historical sample (sample data, not from any device). */
+/** Historical sample sequence. */
 export function histRow(t: number): Telemetry {
   const on = histPumpOn(t)
   const f = on ? 1.15 + rnd(Math.floor(t / 5e3) + 3) * 0.2 : 0
-  return build(t, baseTds(t), baseTemp(t), f, on, on ? 'on' : 'off', {
+  return build(t, baseTds(t), baseTemp(t), f, baseTurbidity(t), on, on ? 'on' : 'off', {
     tds: 'valid',
     temperature: 'valid',
     flow: 'valid',
+    turbidity: 'valid',
   })
 }
 

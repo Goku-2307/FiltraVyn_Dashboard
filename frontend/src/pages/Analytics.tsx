@@ -8,11 +8,11 @@ import { dateTime, fmt, sensorPill, TZ, clock } from '../services/status'
 import type { RangeKey, Telemetry } from '../types/telemetry'
 import { tsOf } from '../types/telemetry'
 
-type Key = 'tds_ppm' | 'temperature_c' | 'flow_lpm'
+type Key = 'tds_ppm' | 'temperature_c' | 'flow_lpm' | 'turbidity_ntu'
 
 interface SensorDef {
   key: Key
-  status: 'tds' | 'temperature' | 'flow'
+  status: 'tds' | 'temperature' | 'flow' | 'turbidity'
   label: string
   unit: string
   color: string
@@ -23,6 +23,7 @@ interface SensorDef {
 
 const SENSORS: SensorDef[] = [
   { key: 'tds_ppm', status: 'tds', label: 'TDS', unit: 'ppm', color: '#2A3FD8', digits: 0, span: 30, floor: 0 },
+  { key: 'turbidity_ntu', status: 'turbidity', label: 'Turbidity', unit: 'NTU', color: '#D97706', digits: 1, span: 2, floor: 0 },
   { key: 'temperature_c', status: 'temperature', label: 'Water temperature', unit: '°C', color: '#0E7C86', digits: 1, span: 3, floor: -20 },
   { key: 'flow_lpm', status: 'flow', label: 'Flow rate', unit: 'L/min', color: '#6B3FA0', digits: 2, span: 0.6, floor: 0 },
 ]
@@ -82,7 +83,7 @@ function SensorCard({ def, rows, range }: { def: SensorDef; rows: Telemetry[]; r
       <div className="head">
         <div>
           <h2>{def.label}</h2>
-          <div className="tagline">{mode === 'simulation' ? 'Simulated' : 'Measured'} · {last ? `latest ${clock(tsOf(last))} ${TZ}` : 'no data'}</div>
+          <div className="tagline">{mode === 'simulation' ? 'ESP32-S3 Stream' : 'Measured'} · {last ? `latest ${clock(tsOf(last))} ${TZ}` : 'no data'}</div>
         </div>
         <Pill kind={pill[0]}>{pill[1]}</Pill>
       </div>
@@ -95,10 +96,10 @@ function SensorCard({ def, rows, range }: { def: SensorDef; rows: Telemetry[]; r
             <span>Min <b>{min.toFixed(def.digits)}</b></span>
             <span>Max <b>{max.toFixed(def.digits)}</b></span>
             <span>Avg <b>{avg.toFixed(def.digits)}</b></span>
-            <span><b>{n}</b> valid records</span>
+            <span><b>{n}</b> readings</span>
           </>
         ) : (
-          <span>No valid records in range</span>
+          <span>No readings in range</span>
         )}
       </div>
       <div className="chart"><SensorChart rows={rows} def={def} range={range} /></div>
@@ -117,20 +118,20 @@ export function Analytics() {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(csv)
-      setMsg('CSV copied.')
+      setMsg('CSV copied to clipboard.')
     } catch {
       csvRef.current?.focus()
       csvRef.current?.select()
       setMsg('Copy was blocked. The text is selected: press Ctrl+C or Cmd+C.')
     }
   }
-  const save = () => setMsg(downloadCsv(csv, `filtravyn-${mode}-${range}.csv`) ? 'Download started.' : 'Download blocked. Use Copy CSV instead.')
+  const save = () => setMsg(downloadCsv(csv, `filtravyn-telemetry-${range}.csv`) ? 'Download started.' : 'Download blocked. Use Copy CSV instead.')
 
   const show = rows.slice(-40).reverse()
   return (
     <>
       <PageHead
-        title="Sensor analytics"
+        title="Sensor analytics & telemetry trends"
         right={
           <div className="rangebar">
             <span className="small muted">Range</span>
@@ -142,66 +143,72 @@ export function Analytics() {
           </div>
         }
       >
-        History, ranges and exportable records. Unavailable readings are blank, never zero.
+        Historical telemetry, sensor trends, and TinyML classifications for all water quality parameters.
       </PageHead>
 
-      {mode === 'simulation' && (
-        <div className="tagline">History before this page opened is generated sample data. Rows after that come from the running simulator.</div>
-      )}
-      {error && <div className="err">Could not load history from the backend: {error}</div>}
+      {error && <div className="err">Could not load history: {error}</div>}
 
       <div className="sensors">
         {SENSORS.map((d) => <SensorCard key={d.key} def={d} rows={rows} range={range} />)}
-        <div className="panel sc">
-          <div className="head">
-            <div><h2>Turbidity</h2><div className="tagline">NTU</div></div>
-            <Pill kind="na">Awaiting sensor</Pill>
-          </div>
-          <div className="empty">No turbidity sensor is installed, so no NTU data exists. A chart appears once a sensor reports valid readings.</div>
-        </div>
       </div>
 
       <div className="panel">
         <div className="ph">
-          <h2>Readings table</h2>
+          <h2>Telemetry readings table</h2>
           <span className="tagline">Latest 40 of <span className="num">{rows.length}</span> records · times in {TZ}</span>
         </div>
         {rows.length ? (
           <div className="tbl" style={{ maxHeight: 340, overflow: 'auto' }}>
             <table>
               <thead>
-                <tr><th>Time</th><th>Source</th><th>TDS (ppm)</th><th>Temp (°C)</th><th>Flow (L/min)</th><th>Turbidity (NTU)</th><th>Pump</th></tr>
+                <tr>
+                  <th>Time</th>
+                  <th>Source</th>
+                  <th>TDS (ppm)</th>
+                  <th>Turbidity (NTU)</th>
+                  <th>Temp (°C)</th>
+                  <th>Flow (L/min)</th>
+                  <th>TinyML Quality</th>
+                  <th>Pump</th>
+                </tr>
               </thead>
               <tbody>
-                {show.map((r) => (
-                  <tr key={r.timestamp}>
-                    <td className="n">{dateTime(tsOf(r))}</td>
-                    <td>{r.mode === 'simulation' ? 'Simulated' : 'Measured'}</td>
-                    <td className="n">{r.tds_ppm ?? '—'}</td>
-                    <td className="n">{fmt(r.temperature_c)}</td>
-                    <td className="n">{fmt(r.flow_lpm, 2)}</td>
-                    <td className="n">—</td>
-                    <td>{r.pump_state}</td>
-                  </tr>
-                ))}
+                {show.map((r) => {
+                  const qClass = r.tinyml?.predictedClass ?? (r.tds_ppm != null && r.tds_ppm > 450 ? 'Poor' : 'Good')
+                  const qPill = qClass === 'Good' ? 'ok' : qClass === 'Moderate' ? 'warn' : 'crit'
+                  return (
+                    <tr key={r.timestamp}>
+                      <td className="n">{dateTime(tsOf(r))}</td>
+                      <td>ESP32-S3</td>
+                      <td className="n">{r.tds_ppm ?? '—'}</td>
+                      <td className="n">{r.turbidity_ntu != null ? fmt(r.turbidity_ntu, 1) : '—'}</td>
+                      <td className="n">{fmt(r.temperature_c)}</td>
+                      <td className="n">{fmt(r.flow_lpm, 2)}</td>
+                      <td>
+                        <Pill kind={qPill}>{qClass}</Pill>
+                      </td>
+                      <td>{r.pump_state}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="empty">No records. {mode === 'live' ? 'Live Device Mode has not received any telemetry.' : ''}</div>
+          <div className="empty">No telemetry records available yet.</div>
         )}
       </div>
 
       <div className="panel">
         <div className="ph">
-          <h2>CSV export</h2>
+          <h2>CSV telemetry export</h2>
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="btn" disabled={!rows.length} onClick={save}>Download CSV</button>
             <button className="btn ghost" disabled={!rows.length} onClick={copy}>Copy CSV</button>
           </div>
         </div>
         <div className="pb" style={{ display: 'grid', gap: 8 }}>
-          <p className="small muted">Timestamps are UTC ISO 8601. Blank cells mean unavailable. Field names match the API.</p>
+          <p className="small muted">Timestamps are UTC ISO 8601. Export includes TDS, Turbidity NTU, Physical ADC, Voltage, and TinyML predictions.</p>
           <textarea ref={csvRef} className="csv" readOnly aria-label="CSV text" value={csv} />
           <div className="small muted">{msg}</div>
         </div>

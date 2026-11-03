@@ -5,7 +5,7 @@ export type PillKind = 'ok' | 'warn' | 'crit' | 'na' | 'info'
 
 /** Validity pill for one sensor. Missing data is "No data", never "Valid". */
 export function sensorPill(
-  key: 'tds' | 'temperature' | 'flow',
+  key: 'tds' | 'temperature' | 'flow' | 'turbidity',
   r: Telemetry | null,
   cfg: Thresholds,
 ): [PillKind, string] {
@@ -16,6 +16,7 @@ export function sensorPill(
   if (st === 'not_installed') return ['na', 'Awaiting sensor']
   if (st === 'unknown') return ['na', 'Unknown']
   if (key === 'tds' && r.tds_ppm != null && r.tds_ppm > cfg.tdsWarnHigh) return ['warn', 'Above threshold']
+  if (key === 'turbidity' && r.turbidity_ntu != null && r.turbidity_ntu > 5.0) return ['warn', 'Elevated NTU']
   if (key === 'temperature' && r.temperature_c != null && (r.temperature_c > cfg.tempMax || r.temperature_c < cfg.tempMin))
     return ['warn', 'Out of range']
   return ['ok', 'Valid']

@@ -1,11 +1,11 @@
 import type { Telemetry } from '../types/telemetry'
 
 export const CSV_HEADER =
-  'device_id,timestamp,mode,tds_ppm,temperature_c,flow_lpm,turbidity_ntu,pump_commanded,pump_state,tds_status,temperature_status,flow_status,turbidity_status'
+  'device_id,timestamp,mode,tds_ppm,temperature_c,flow_lpm,turbidity_ntu,turbidity_raw_adc,turbidity_voltage,tinyml_quality,pump_commanded,pump_state,tds_status,temperature_status,flow_status,turbidity_status'
 
-const cell = (v: number | null) => (v == null ? '' : String(v))
+const cell = (v: number | null | undefined) => (v == null ? '' : String(v))
 
-/** Timestamped records for later ML training. Blank cells mean unavailable. */
+/** Timestamped records for ML analysis and verification. */
 export function toCsv(rows: Telemetry[]): string {
   const lines = rows.map((r) =>
     [
@@ -16,6 +16,9 @@ export function toCsv(rows: Telemetry[]): string {
       cell(r.temperature_c),
       cell(r.flow_lpm),
       cell(r.turbidity_ntu),
+      cell(r.turbidity_raw),
+      cell(r.turbidity_voltage),
+      r.tinyml?.predictedClass ?? '',
       r.pump_commanded,
       r.pump_state,
       r.sensor_status.tds,

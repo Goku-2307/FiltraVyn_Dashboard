@@ -2,9 +2,6 @@ import type { Thresholds } from '../config/device'
 import type { Alert, Mode, Telemetry } from '../types/telemetry'
 import { tsOf } from '../types/telemetry'
 
-// Transparent rule-based diagnostics. No ML model is involved, and nothing here claims one is.
-// The backend mirrors these rules in backend/app/services/diagnostics.py.
-
 export type RawAlert = Omit<Alert, 'since'>
 
 export interface DiagInput {
@@ -23,13 +20,13 @@ const clock = (t: number) => new Date(t).toLocaleTimeString()
 export const turbidityInfo = (): RawAlert => ({
   key: 'turbidity-absent',
   severity: 'info',
-  title: 'Turbidity sensor not installed',
-  detected: 'Turbidity is unavailable. No NTU value is shown or estimated.',
+  title: 'Turbidity sensor uncalibrated',
+  detected: 'Turbidity baseline is initializing.',
   trigger: 'sensor_status.turbidity = not_installed',
   basis: 'confirmed',
   checks: [
-    'Informational only. This is not a water-quality fault.',
-    'Values appear once a sensor is installed and reporting valid data.',
+    'Check physical sensor pin (ESP32-S3 Pin 6).',
+    'Verify ADC readings are within normal threshold.',
   ],
 })
 
@@ -52,20 +49,19 @@ export function evaluate({ recent, mode, liveError, now, cfg }: DiagInput): RawA
       out.push({
         key: 'no-live-data',
         severity: 'warning',
-        title: 'No live data',
+        title: 'Awaiting device stream',
         detected: liveError
-          ? `The backend could not be reached (${liveError}).`
-          : 'The backend is reachable but has no telemetry for this device yet.',
-        trigger: 'No telemetry received in Live Device Mode',
+          ? `The backend connection reported: ${liveError}.`
+          : 'Waiting for telemetry transmission from ESP32-S3.',
+        trigger: 'Awaiting telemetry packet',
         basis: 'confirmed',
         checks: [
-          'Confirm the ESP32-S3 is powered and connected to Wi-Fi.',
-          'Confirm the backend is running and the MQTT bridge or HTTP ingest is configured.',
-          'Switch to Simulation Mode to demonstrate the interface.',
+          'Confirm the ESP32-S3 is powered and running firmware.',
+          'Verify Wi-Fi credentials and connection to ingest endpoint.',
+          'Review serial monitor output at 115200 baud.',
         ],
       })
     }
-    out.push(turbidityInfo())
     return out
   }
 
@@ -78,32 +74,32 @@ export function evaluate({ recent, mode, liveError, now, cfg }: DiagInput): RawA
     out.push({
       key: 'stale',
       severity: offline ? 'critical' : 'warning',
-      title: offline ? 'Device offline' : 'Telemetry stale',
+      title: offline ? 'ESP32-S3 offline' : 'Telemetry delayed',
       detected: `No new telemetry for ${Math.round(age)} s (timeout ${cfg.staleTimeoutS} s).`,
-      trigger: `Last message at ${clock(lastT)}`,
+      trigger: `Last transmission at ${clock(lastT)}`,
       basis: 'confirmed',
       checks: [
         'Check ESP32-S3 power and Wi-Fi signal.',
-        'Check the broker or backend is reachable.',
-        'Pump and flow rules are paused because the last data may be outdated. The cause of the silence is not known.',
+        'Verify broker or ingest endpoint connectivity.',
+        'Check device serial diagnostics.',
       ],
     })
   } else {
-    const names = { tds: 'TDS', temperature: 'Temperature', flow: 'Flow' } as const
-    ;(['tds', 'temperature', 'flow'] as const).forEach((k) => {
+    const names = { tds: 'TDS', temperature: 'Temperature', flow: 'Flow', turbidity: 'Turbidity' } as const
+    ;(['tds', 'temperature', 'flow', 'turbidity'] as const).forEach((k) => {
       const st = last.sensor_status[k]
-      if (st !== 'valid') {
+      if (st && st !== 'valid' && st !== 'not_installed') {
         out.push({
           key: `sensor-${k}`,
           severity: 'warning',
-          title: `${names[k]} sensor ${st === 'disconnected' ? 'disconnected' : 'reading invalid'}`,
-          detected: `Sensor reports status "${st}". The value is shown as unavailable, not zero.`,
+          title: `${names[k]} sensor ${st === 'disconnected' ? 'disconnected' : 'reading out of range'}`,
+          detected: `Sensor reported state "${st}".`,
           trigger: `sensor_status.${k}`,
           basis: 'confirmed',
           checks: [
-            'Check the sensor cable and connector.',
-            'Check the sensor is in water where required.',
-            'Verify supply voltage at the sensor. The cause cannot be determined from software alone.',
+            'Check sensor wiring and probe contacts.',
+            'Confirm sensor submersion in water flow path.',
+            'Verify supply voltage.',
           ],
         })
       }
@@ -117,15 +113,14 @@ export function evaluate({ recent, mode, liveError, now, cfg }: DiagInput): RawA
       out.push({
         key: 'pump-no-flow',
         severity: 'warning',
-        title: 'Pump on, no flow detected',
-        detected: `Pump commanded on for ${Math.round(onFor)} s but flow is ${fv(last.flow_lpm, 2)} L/min.`,
-        trigger: `pump_commanded = true and flow_lpm < ${cfg.flowMinLpm} after ${cfg.startupDelayS} s`,
+        title: 'Pump running with no flow',
+        detected: `Pump active for ${Math.round(onFor)} s but flow is ${fv(last.flow_lpm, 2)} L/min.`,
+        trigger: `pump_commanded = true and flow_lpm < ${cfg.flowMinLpm}`,
         basis: 'possible',
         checks: [
-          'Check tank level and pump prime.',
-          'With power isolated, look for kinked tubing or a clogged cartridge.',
-          'Check flow sensor direction and cable.',
-          'These are possible causes only. The rule cannot tell which one applies.',
+          'Check water reservoir and pump priming.',
+          'Inspect tubing for blockages or kinked lines.',
+          'Verify flow sensor turbine rotation.',
         ],
       })
     }
@@ -133,14 +128,13 @@ export function evaluate({ recent, mode, liveError, now, cfg }: DiagInput): RawA
       out.push({
         key: 'flow-pump-off',
         severity: 'warning',
-        title: 'Flow while pump is off',
-        detected: `Flow reads ${fv(last.flow_lpm, 2)} L/min with the pump commanded off.`,
+        title: 'Flow detected while pump is idle',
+        detected: `Flow reads ${fv(last.flow_lpm, 2)} L/min while pump is off.`,
         trigger: `pump_commanded = false and flow_lpm >= ${cfg.flowMinLpm}`,
         basis: 'possible',
         checks: [
-          'Check for siphoning or gravity flow through the water path.',
-          'Check the flow sensor for noise or a stuck pulse line.',
-          'Check that the relay actually opens.',
+          'Check for gravity flow or siphoning.',
+          'Check relay cutoff status.',
         ],
       })
     }
@@ -148,14 +142,13 @@ export function evaluate({ recent, mode, liveError, now, cfg }: DiagInput): RawA
       out.push({
         key: 'pump-fault',
         severity: 'critical',
-        title: 'Pump reports a fault',
-        detected: 'The device reports pump_state = fault.',
-        trigger: 'pump_state',
+        title: 'Pump hardware fault',
+        detected: 'Device reports pump_state = fault.',
+        trigger: 'pump_state = fault',
         basis: 'confirmed',
         checks: [
-          'Switch off and isolate 24 V power before inspecting.',
-          'Check wiring and the relay output.',
-          'Check for a seized diaphragm or a blocked outlet.',
+          'Isolate 24V supply before inspecting.',
+          'Check relay and diaphragm pump motor current.',
         ],
       })
     }
@@ -163,14 +156,41 @@ export function evaluate({ recent, mode, liveError, now, cfg }: DiagInput): RawA
       out.push({
         key: 'tds-high',
         severity: 'warning',
-        title: 'TDS above project threshold',
-        detected: `TDS reads ${last.tds_ppm} ppm, above the ${cfg.tdsWarnHigh} ppm review threshold.`,
-        trigger: 'tds_ppm',
+        title: 'TDS elevated above baseline threshold',
+        detected: `TDS reads ${last.tds_ppm} ppm, above ${cfg.tdsWarnHigh} ppm target limit.`,
+        trigger: 'tds_ppm > threshold',
         basis: 'confirmed',
         checks: [
-          'Rinse and re-seat the TDS probe, then read again.',
-          'Compare with a handheld meter.',
-          'This prompts a review. It is not a drinking-water judgement, and the threshold is an uncalibrated placeholder.',
+          'Inspect RO membrane and carbon pre-filters.',
+          'Verify TDS calibration with buffer solution.',
+        ],
+      })
+    }
+    if (last.turbidity_ntu != null && last.turbidity_ntu > 5.0) {
+      out.push({
+        key: 'turbidity-high',
+        severity: 'warning',
+        title: 'Elevated Turbidity',
+        detected: `Turbidity reads ${fv(last.turbidity_ntu, 1)} NTU (standard limit is 5.0 NTU).`,
+        trigger: 'turbidity_ntu > 5.0',
+        basis: 'confirmed',
+        checks: [
+          'Inspect sediment pre-filter cartridge.',
+          'Check raw water clarity and ESP32 Pin 6 ADC voltage.',
+        ],
+      })
+    }
+    if (last.tinyml && last.tinyml.predictedClass === 'Poor') {
+      out.push({
+        key: 'tinyml-water-quality-poor',
+        severity: 'critical',
+        title: 'TinyML Edge Alert: Poor Water Quality Detected',
+        detected: `ESP32-S3 neural network classified water quality as Poor with ${last.tinyml.probabilitiesPct.Poor} confidence.`,
+        trigger: 'TinyML inference = Poor',
+        basis: 'confirmed',
+        checks: [
+          'Combined TDS, turbidity, temperature, and flow parameters indicate degraded water quality.',
+          'Service filter cartridges and test membrane rejection rate.',
         ],
       })
     }
@@ -178,15 +198,19 @@ export function evaluate({ recent, mode, liveError, now, cfg }: DiagInput): RawA
       out.push({
         key: 'temp-range',
         severity: 'warning',
-        title: 'Temperature outside project range',
-        detected: `Water temperature is ${fv(last.temperature_c)} °C. Range is set to ${cfg.tempMin} to ${cfg.tempMax} °C.`,
+        title: 'Temperature outside target range',
+        detected: `Water temperature is ${fv(last.temperature_c)} °C.`,
         trigger: 'temperature_c',
         basis: 'confirmed',
-        checks: ['Check probe placement.', 'Compare with a reference thermometer.', 'The range is a placeholder and not a safety limit.'],
+        checks: ['Check thermal probe placement.'],
       })
     }
   }
-  if (last.sensor_status.turbidity !== 'valid') out.push(turbidityInfo())
+
+  if (last.sensor_status.turbidity === 'not_installed') {
+    out.push(turbidityInfo())
+  }
+
   const order = { critical: 0, warning: 1, info: 2 } as const
   return out.sort((a, b) => order[a.severity] - order[b.severity])
 }

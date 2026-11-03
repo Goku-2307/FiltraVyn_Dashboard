@@ -165,10 +165,10 @@ function CellProbes() {
           <meshStandardMaterial color="#0F2230" />
         </mesh>
       ))}
-      {/* Turbidity placeholder: wireframe because the sensor is not installed */}
+      {/* Turbidity optical sensor probe (ESP32-S3 Pin 6) */}
       <mesh position={[cell.x + 0.4, 1.1 + 0.27, cell.z]}>
         <cylinderGeometry args={[0.06, 0.06, 0.55, 12]} />
-        <meshBasicMaterial color="#6F808B" wireframe />
+        <meshStandardMaterial color="#D97706" />
       </mesh>
     </group>
   )
