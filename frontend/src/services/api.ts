@@ -1,5 +1,9 @@
 import { API_BASE } from '../config/device'
+<<<<<<< HEAD
 import type { Alert, SensorStatuses, Telemetry } from '../types/telemetry'
+=======
+import type { Alert, Telemetry } from '../types/telemetry'
+>>>>>>> origin/main
 
 // Thin REST client. Components never call fetch directly.
 
@@ -25,6 +29,7 @@ export interface ModelConfig {
   pipeRoute: string[] | null
 }
 
+<<<<<<< HEAD
 export interface ChatMessage {
   role: 'user' | 'model'
   text: string
@@ -40,6 +45,8 @@ export interface ChatTelemetry {
   sensor_status: SensorStatuses
 }
 
+=======
+>>>>>>> origin/main
 export const api = {
   health: () => get<{ status: string }>('/health'),
   device: () => get<DeviceInfo>('/device'),
@@ -54,6 +61,7 @@ export const api = {
     get<Telemetry[]>(`/readings?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}&limit=${limit}`, signal),
   alerts: () => get<ServerAlert[]>('/alerts'),
   modelConfig: () => get<ModelConfig>('/model/config'),
+<<<<<<< HEAD
   async chat(messages: ChatMessage[], telemetry: ChatTelemetry): Promise<string> {
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
@@ -70,6 +78,8 @@ export const api = {
     if (!result.reply) throw new Error('The assistant returned an empty response.')
     return result.reply
   },
+=======
+>>>>>>> origin/main
 }
 
 /** Static fallback so the Digital Twin works with no backend. Edit public/models/model.config.json. */

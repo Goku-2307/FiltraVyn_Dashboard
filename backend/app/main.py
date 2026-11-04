@@ -16,7 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .config import Settings, load_settings
+<<<<<<< HEAD
 from .services.chat import ChatRequest, GeminiError, generate_reply
+=======
+>>>>>>> origin/main
 from .services import diagnostics
 from .services.mqtt_bridge import start_bridge
 from .services.store import Store
@@ -128,6 +131,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     def health():
         return {"status": "ok", "time": iso_z(datetime.now(timezone.utc))}
 
+<<<<<<< HEAD
     @app.post("/api/chat")
     async def chat(req: ChatRequest):
         if not cfg.gemini_api_key:
@@ -142,6 +146,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             raise HTTPException(error.status_code, str(error)) from error
         return {"reply": reply}
 
+=======
+>>>>>>> origin/main
     @app.get("/api/device")
     def device(device_id: str = DEFAULT_DEVICE):
         state, seen = connection(device_id)

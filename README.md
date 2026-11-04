@@ -22,19 +22,30 @@ npm run dev          # http://localhost:5173
 npm run build        # type-checks, then builds to frontend/dist
 ```
 
+<<<<<<< HEAD
 **Backend** (needed for Live Device Mode and the Gemini assistant):
+=======
+**Backend** (needed only for Live Device Mode):
+>>>>>>> origin/main
 
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+<<<<<<< HEAD
 cp .env.example .env                                   # set DEVICE_API_KEY and GEMINI_API_KEY as needed
+=======
+cp .env.example .env                                   # then set DEVICE_API_KEY to your own long random value
+>>>>>>> origin/main
 uvicorn app.main:app --reload --port 8000
 python -m unittest discover -s tests -v                # logic tests, no extra packages needed
 ```
 
+<<<<<<< HEAD
 The support chatbot also requires the backend, including when using Simulation Mode. Set `GEMINI_API_KEY` in `backend/.env`; get a key from [Google AI Studio](https://aistudio.google.com/apikey). The key stays on the backend and is never placed in the frontend bundle. `GEMINI_MODEL` defaults to `gemini-2.5-flash` and can be changed to a model available to your API key.
 
+=======
+>>>>>>> origin/main
 Vite proxies `/api` and `/ws` to `127.0.0.1:8000` in development, so run both and open the frontend URL.
 
 Send a test record once the backend is up:
@@ -54,7 +65,11 @@ Then switch the console to **Live device**.
 2. **Digital twin** — orbit, pan, zoom, reset, auto-rotate, component selection, state legend, GLB loader and mesh mapping.
 3. **Sensor analytics** — 1h / 24h / 7d / 30d charts, min / max / avg from valid records only, table, CSV download or copy.
 4. **Alerts and diagnostics** — transparent rules with trigger, evidence, confirmed-or-possible label, editable placeholder thresholds.
+<<<<<<< HEAD
 5. **Support and DIY** — FAQ, guided troubleshooting, filter change with safety notes, sensor care, service log, and a Gemini-powered assistant for purifier questions. A floating chat button is also available on every page.
+=======
+5. **Support and DIY** — FAQ, guided troubleshooting, filter change with safety notes, sensor care, service log, scripted demo assistant (labelled as a demo).
+>>>>>>> origin/main
 
 ## Data rules that are enforced in code
 
@@ -96,5 +111,8 @@ Not verified: `npm install`, `npm run build`, the FastAPI server itself, and a b
 - **Live mode says "backend unreachable"**: start the backend and check that Vite is proxying `/api`.
 - **401 from `/api/telemetry`**: the `X-Device-Key` header must equal `DEVICE_API_KEY`.
 - **503 from `/api/telemetry`**: `DEVICE_API_KEY` is not set. Ingest stays disabled until it is.
+<<<<<<< HEAD
 - **503 from `/api/chat`**: set `GEMINI_API_KEY` in `backend/.env`, then restart the backend.
+=======
+>>>>>>> origin/main
 - **GLB loads but nothing is tinted**: names in the mapping must match mesh names exactly (shown on the Digital twin page).

@@ -1,6 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTelemetry } from './TelemetryContext'
+<<<<<<< HEAD
 import { ChatWidget } from '../components/ChatWidget'
+=======
+>>>>>>> origin/main
 import { DEVICE } from '../config/device'
 import { clock, TZ } from '../services/status'
 import { tsOf } from '../types/telemetry'
@@ -59,7 +62,10 @@ export function Layout() {
         <Banner />
         <Outlet />
       </main>
+<<<<<<< HEAD
       <ChatWidget />
+=======
+>>>>>>> origin/main
     </div>
   )
 }
