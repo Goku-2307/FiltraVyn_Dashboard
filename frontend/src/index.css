@@ -165,7 +165,6 @@ textarea.csv{width:100%;min-height:120px;font-family:var(--f-num);font-size:12px
 .msg.a{align-self:flex-start;background:var(--paper)}
 .chatin{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line2)}
 .chatin input{flex:1;min-width:0;border:1px solid var(--line);border-radius:3px;padding:8px 10px;background:var(--paper)}
-<<<<<<< HEAD
 .chat-error{padding:8px 14px 0;color:var(--crit);font-size:13px}
 .chat-note{padding:0 14px 12px;color:var(--ink2);font-size:12px}
 .chat-widget{position:fixed;right:max(22px,env(safe-area-inset-right,0px));bottom:max(22px,env(safe-area-inset-bottom,0px));z-index:1000}
@@ -186,10 +185,6 @@ textarea.csv{width:100%;min-height:120px;font-family:var(--f-num);font-size:12px
 .sug{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 12px}
 .sug button{border:1px solid var(--line);background:var(--paper);border-radius:2px;padding:4px 9px;font-size:12.5px;font-weight:600}
 .sug button:disabled{opacity:.5;cursor:not-allowed}
-=======
-.sug{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 12px}
-.sug button{border:1px solid var(--line);background:var(--paper);border-radius:2px;padding:4px 9px;font-size:12.5px;font-weight:600}
->>>>>>> origin/main
 details.faq{border-bottom:1px solid var(--line2);padding:10px 14px}
 details.faq summary{font-weight:600;cursor:pointer}
 details.faq p{margin-top:8px;color:var(--ink2);font-size:14px}
@@ -211,12 +206,9 @@ details.faq p{margin-top:8px;color:var(--ink2);font-size:14px}
   .sensors,.two{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width:560px){
-<<<<<<< HEAD
   .chat-widget{right:max(14px,env(safe-area-inset-right,0px));bottom:max(14px,env(safe-area-inset-bottom,0px))}
   .chat-launcher{width:54px;height:54px}
   .chat-window{right:-2px;bottom:66px;width:min(380px,calc(100vw - 24px));height:min(520px,calc(100dvh - 96px))}
-=======
->>>>>>> origin/main
   .stage{height:380px}.stage.big{height:440px}
   .cards{grid-template-columns:1fr 1fr}
   .rd .v{font-size:25px}
